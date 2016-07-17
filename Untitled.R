@@ -36,8 +36,8 @@ frequency <- sort(frequency, decreasing=TRUE)
 head(frequency)
 
 freq <-data.frame(names(frequency),frequency)
-freq<- freq[,2:3]
 head(frequency[1:100])
+freq<-subset(freq, frequency > 2)
 write.csv(freq, file = "freq_prodcutos.csv")
 
 #una vez seleccionadas las palabras 'claves' 
@@ -67,7 +67,7 @@ data<- data[-1,]
 products<- cbind.data.frame(text_prods,data)
 
 # Haciendo clusters de los productos
-wss <- (nrow(data)-1)*sum(apply(data,2,var))
+#wss <- (nrow(data)-1)*sum(apply(data,2,var))
 wss<-NULL
 
 for (i in 1:20) wss[i] <- sum(kmeans(data, centers=i)$withinss)
@@ -75,11 +75,9 @@ for (i in 1:20) wss[i] <- sum(kmeans(data, centers=i)$withinss)
 plot(1:20, wss, type="b", xlab="Number of Clusters",
      ylab="Within groups sum of squares")
 
-fit <- kmeans(data, 20) 
+fit <- kmeans(data, 10) 
 
 productos<-cbind.data.frame(text_prods, fit$cluster)
 
 write.csv(productos, file = "cluster_prods.csv")
-
-
 
