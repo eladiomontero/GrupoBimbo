@@ -4,11 +4,11 @@ library(data.table)
 
 # Read in only required columns and force to numeric to ensure that subsequent 
 # aggregation when calculating medians works
-train <- fread('train.csv', 
+train <- fread('DATA\\train.csv', 
                select = c('Agencia_ID', 'Cliente_ID', 'Producto_ID', 'Demanda_uni_equil'),
                colClasses=c(Agencia_ID="numeric", Cliente_ID="numeric",Producto_ID="numeric",Demanda_uni_equil="numeric"))
 
-products <- fread('cluster_prods(20).csv', 
+products <- fread('DATA\\cluster_prods(20).csv', 
                   select = c('Producto_ID',	'Cluster'), 
                   colClasses = c(Producto_ID="numeric", Cluster="character"))
 
