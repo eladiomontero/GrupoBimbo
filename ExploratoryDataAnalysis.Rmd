@@ -15,13 +15,16 @@ library(data.table)
 
 ```{r}
 train <- fread('DATA\\train.csv', 
-               select = c("Semana","Agencia_ID","Canal_ID",
-                          "Ruta_SAK","Cliente_ID","Producto_ID",
-                          'Demanda_uni_equil'),
-               colClasses=c(Semana="numeric",Agencia_ID="numeric",
-                            Canal_ID="numeric", Ruta_SAK="numeric",
-                            Cliente_ID="numeric",Producto_ID="numeric",
-                            Demanda_uni_equil="numeric"), nrows = 1000000)
+  select = c("Semana","Agencia_ID","Canal_ID",
+		"Ruta_SAK","Cliente_ID","Producto_ID",
+		"Venta_uni_hoy","Venta_hoy","Dev_uni_proxima",
+		"Dev_proxima","Demanda_uni_equil"),
+  colClasses=c(Semana="numeric", Agencia_ID="numeric",
+		Canal_ID  ="numeric", Ruta_SAK="numeric", 
+		Cliente_ID="numeric", Producto_ID="numeric", 
+		Venta_uni_hoy="numeric", Venta_hoy="numeric", 
+		Dev_uni_proxima="numeric", Dev_proxima="numeric", 
+		Demanda_uni_equil="numeric"), nrows = 1000000)
 
 products <- fread('DATA\\cluster_prods(20).csv', 
                   select = c('Producto_ID',  'Cluster'), 
