@@ -18,11 +18,11 @@ products <- fread('cluster_prods(20).csv',
                   colClasses = c(Producto_ID="numeric", Cluster="character"))
 
 train <- merge(train, products, by = "Producto_ID")
-train<- train  %>% sample_n(1000000)
+train<- train  %>% sample_n(10000000)
 
 
 ## 50% of the sample size
-smp_size <- floor(0.5 * nrow(train))
+smp_size <- floor(0.8 * nrow(train))
 
 ## set the seed to make your partition reproductible
 set.seed(123)
@@ -152,8 +152,10 @@ train1[, .(Lmean_ProdAgenClien = expm1(mean(log1p(Demanda_uni_equil)))), by = .(
   merge(merged_val2, all.y = TRUE, by = c("Producto_ID","Agencia_ID","Cliente_ID")) -> merged_val2 
 
 
-lm_todasInter<-lm(merged_val2$Demanda_uni_equil~merged_val2$Lmean_agencia+merged_val2$Lmean_producto+merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien.y)
+lm_todasInter<-lm(merged_val2$Demanda_uni_equil~merged_val2$Lmean_agencia+merged_val2$Lmean_producto+merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien)
 summary(lm_todasInter)
+
+summary(lm(merged_val2$Demanda_uni_equil~merged_val2$Lmean_ProdAgenClien))
 
 ###YEEEYYYY SUBIMOS EL R-squared a .71
 
@@ -164,7 +166,7 @@ train1[, .(Lmean_ProdClien = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Prod
 
 
 lm_todasInter2<-lm(merged_val2$Demanda_uni_equil~
-      merged_val2$Lmean_agencia+merged_val2$Lmean_producto+merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien.y+merged_val2$Lmean_ProdClien)
+      merged_val2$Lmean_agencia+merged_val2$Lmean_producto+merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien+merged_val2$Lmean_ProdClien)
 summary(lm_todasInter2)
 
 ###Sube un poco el R .7123
@@ -177,7 +179,7 @@ train1[, .(Lmean_ProdAgen = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Produ
 
 lm_todasInter3<-lm(merged_val2$Demanda_uni_equil~
                      merged_val2$Lmean_agencia+merged_val2$Lmean_producto+
-                     merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien.y+
+                     merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien+
                      merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen)
 summary(lm_todasInter3)
 
@@ -191,8 +193,8 @@ train1[, .(Lmean_CLienAgen = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Clie
 
 lm_todasInter4<-lm(merged_val2$Demanda_uni_equil~
                      merged_val2$Lmean_agencia+merged_val2$Lmean_producto+
-                     merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien.y+
-                     merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen+merged_val2$Lmean_CLienAgen.y)
+                     merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien+
+                     merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen+merged_val2$Lmean_CLienAgen)
 summary(lm_todasInter4)
 
 ### R = .7177 PARECE LO MAXIMO QUE SE PUEDE LOGRAR SOLO CON PROMEDIOS SIMPLES 
@@ -202,8 +204,15 @@ summary(lm_todasInter4)
 mask1 = !(is.na(merged_val2$Lmean_ProdAgenClien.y))
 
 
-rmsleRes<-c(rmsle())
+rmsleRes<-c(rmsle(merged_val2$Lmean_agencia[mask1],merged_val2$Demanda_uni_equil[mask1]),
+            rmsle(merged_val2$Lmean_cliente[mask1],merged_val2$Demanda_uni_equil)[mask1],
+            rmsle(merged_val2$Lmean_producto[mask1],merged_val2$Demanda_uni_equil)[mask1],
+            rmsle(merged_val2$Lmean_ProdAgen[mask1],merged_val2$Demanda_uni_equil)[mask1],
+            rmsle(merged_val2$Lmean_ProdClien[mask1],merged_val2$Demanda_uni_equil)[mask1],
+            rmsle(merged_val2$Lmean_CLienAgen.y[mask1],merged_val2$Demanda_uni_equil[mask1]),
+            rmsle(merged_val2$Lmean_ProdAgenClien.y[mask1],merged_val2$Demanda_uni_equil[mask1]))
 
+rmsleRes
 
 Lmean_cliente<-train1[, .(expm1(mean(log1p(Demanda_uni_equil)))), by = .(Cliente_ID)] 
 Lmean_producto<-train1[, .(expm1(mean(log1p(Demanda_uni_equil)))), by = .(Producto_ID)]
@@ -241,3 +250,64 @@ anova(lm1)
 lm2 <- lm(log(train2$Demanda_uni_equil+1)~as.factor(train$Cluster)+as.factor(train$Agencia_ID)+as.factor(train$Cliente_ID))
 summary(lm2)
 anova(lm2)
+
+calcModelo <- function(n)
+{
+  trainp<- train  %>% sample_n(n)
+  
+  
+  ## 50% of the sample size
+  smp_size <- floor(0.8 * nrow(trainp))
+  
+  ## set the seed to make your partition reproductible
+  set.seed(123)
+  train_ind <- sample(seq_len(nrow(trainp)), size = smp_size)
+  
+  train1 <- trainp[train_ind, ]
+  test1 <- trainp[-train_ind, ]
+  
+  # set a table key to enable fast aggregations
+  setkey(train, Producto_ID, Agencia_ID, Cliente_ID)
+  setkey(products, Producto_ID)
+  
+  setkey(train1, Producto_ID, Agencia_ID, Cliente_ID)
+  setkey(test1, Producto_ID, Agencia_ID, Cliente_ID)
+  
+  #variables por separado
+  train1[, .(Lmean_cliente = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Cliente_ID)] %>% 
+    merge(test1, all.y = TRUE, by = c("Cliente_ID")) -> merged_val2
+  
+  train1[, .(Lmean_producto = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Producto_ID)] %>% 
+    merge(merged_val2, all.y = TRUE, by = c("Producto_ID")) -> merged_val2
+  
+  train1[, .(Lmean_agencia = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Agencia_ID)] %>% 
+    merge(merged_val2, all.y = TRUE, by = c("Agencia_ID")) -> merged_val2
+  
+  #interacciones
+  train1[, .(Lmean_ProdAgenClien = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Producto_ID,Agencia_ID,Cliente_ID)] %>% 
+    merge(merged_val2, all.y = TRUE, by = c("Producto_ID","Agencia_ID","Cliente_ID")) -> merged_val2 
+  
+  train1[, .(Lmean_ProdClien = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Producto_ID,Cliente_ID)] %>% 
+    merge(merged_val2, all.y = TRUE, by = c("Producto_ID","Cliente_ID")) -> merged_val2 
+  
+  train1[, .(Lmean_CLienAgen = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Cliente_ID,Agencia_ID)] %>% 
+    merge(merged_val2, all.y = TRUE, by = c("Cliente_ID","Agencia_ID")) -> merged_val2 
+  
+  lm_todasInter4<-lm(merged_val2$Demanda_uni_equil~
+                       merged_val2$Lmean_agencia+merged_val2$Lmean_producto+
+                       merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien+
+                       merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen+merged_val2$Lmean_CLienAgen)
+  
+  lm_todasInter4$r.squared
+}
+
+n<-seq(1000000,20000000,1000000)
+r<-rep(0,length(n))
+
+for(i in 1:length(n)){
+  
+  r[i]<-calcModelo(n[i])
+  
+}
+
+
