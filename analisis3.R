@@ -14,8 +14,8 @@ calcModelo <- function(n)
   test1 <- trainp[-train_ind, ]
   
   # set a table key to enable fast aggregations
-  setkey(train, Producto_ID, Agencia_ID, Cliente_ID)
-  setkey(products, Producto_ID)
+  # setkey(train, Producto_ID, Agencia_ID, Cliente_ID)
+  # setkey(products, Producto_ID)
   
   setkey(train1, Producto_ID, Agencia_ID, Cliente_ID)
   setkey(test1, Producto_ID, Agencia_ID, Cliente_ID)
@@ -45,47 +45,11 @@ calcModelo <- function(n)
                        merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien+
                        merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen+merged_val2$Lmean_CLienAgen)
   
-  lm_todasInter4$r.squared
-}
-
-train <- fread('train.csv', 
-               select = c('Agencia_ID', 'Cliente_ID', 'Producto_ID', 'Demanda_uni_equil'),
-               colClasses=c(Agencia_ID="numeric", Cliente_ID="numeric",Producto_ID="numeric",Demanda_uni_equil="numeric"))
-
-products <- fread('cluster_prods(20).csv', 
-                  select = c('Producto_ID',	'Cluster'), 
-                  colClasses = c(Producto_ID="numeric", Cluster="character"))
-
-train <- merge(train, products, by = "Producto_ID")
+  summary(lm_todasInter4)$r.squared
+  
+  }
 
 
-
-## 50% of the sample size
-smp_size <- floor(0.8 * nrow(train))
-
-## set the seed to make your partition reproductible
-set.seed(123)
-train_ind <- sample(seq_len(nrow(train)), size = smp_size)
-
-train1 <- train[train_ind, ]
-test1 <- train[-train_ind, ]
-
-# set a table key to enable fast aggregations
-setkey(train, Producto_ID, Agencia_ID, Cliente_ID)
-setkey(products, Producto_ID)
-
-setkey(train1, Producto_ID, Agencia_ID, Cliente_ID)
-setkey(test1, Producto_ID, Agencia_ID, Cliente_ID)
-
-#calculate the overall median and mean
-median_train <- train1[, median(Demanda_uni_equil)]
-mean_train<- train1[, mean(Demanda_uni_equil)]
-log_mean<- train1[,  expm1(mean(log1p(Demanda_uni_equil)))] 
-
-
-rmsle(median_train, test1$Demanda_uni_equil)
-rmsle(mean_train, test1$Demanda_uni_equil)
-rmsle(log_mean, test1$Demanda_uni_equil)
 
 
 n<-seq(1000000,20000000,1000000)
@@ -94,5 +58,5 @@ r<-rep(0,length(n))
 for(i in 1:length(n)){
   
   r[i]<-calcModelo(n[i])
-  
+  print(paste("calculating with ", n[i]/1000000, " million, error: ", r[i]))
 }
