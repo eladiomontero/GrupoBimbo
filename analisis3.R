@@ -1,5 +1,6 @@
 calcModelo <- function(n)
 {
+  
   trainp<- train  %>% sample_n(n)
   
   
@@ -38,12 +39,16 @@ calcModelo <- function(n)
     merge(merged_val2, all.y = TRUE, by = c("Producto_ID","Cliente_ID")) -> merged_val2 
   
   train1[, .(Lmean_CLienAgen = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Cliente_ID,Agencia_ID)] %>% 
-    merge(merged_val2, all.y = TRUE, by = c("Cliente_ID","Agencia_ID")) -> merged_val2 
+    merge(merged_val2, all.y = TRUE, by = c("Cliente_ID","Agencia_ID")) -> merged_val2
+  
+  train1[, .(Lmean_ProdAgen = expm1(mean(log1p(Demanda_uni_equil)))), by = .(Producto_ID,Agencia_ID)] %>% 
+    merge(merged_val2, all.y = TRUE, by = c("Producto_ID","Agencia_ID")) -> merged_val2
   
   lm_todasInter4<-lm(merged_val2$Demanda_uni_equil~
                        merged_val2$Lmean_agencia+merged_val2$Lmean_producto+
                        merged_val2$Lmean_cliente+merged_val2$Lmean_ProdAgenClien+
                        merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen+merged_val2$Lmean_CLienAgen)
+  
   
   summary(lm_todasInter4)$r.squared
   
@@ -60,3 +65,21 @@ for(i in 1:length(n)){
   r[i]<-calcModelo(n[i])
   print(paste("calculating with ", n[i]/1000000, " million, error: ", r[i]))
 }
+
+
+#STOCHASTIC GRADIENT BOOSTING
+
+fitControl <- trainControl(## 10-fold CV
+  method = "repeatedcv",
+  number = 10,
+  ## repeated ten times
+  repeats = 10)
+
+gbmFit1 <- train(Demanda_uni_equil ~ Lmean_agencia+Lmean_producto+
+                   Lmean_cliente+Lmean_ProdAgenClien+
+                   Lmean_ProdClien+Lmean_ProdAgen+Lmean_CLienAgen, data = merged_val2,
+                 method = "gbm",
+                 trControl = fitControl,
+                 ## This last option is actually one
+                 ## for gbm() that passes through
+                 verbose = FALSE)
