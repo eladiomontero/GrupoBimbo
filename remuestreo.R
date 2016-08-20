@@ -1,4 +1,4 @@
-calcModelo <- function(n)
+resampling <- function(n)
 {
   
   trainp<- train  %>% sample_n(n)
@@ -8,7 +8,7 @@ calcModelo <- function(n)
   smp_size <- floor(0.8 * nrow(trainp))
   
   ## set the seed to make your partition reproductible
-  set.seed(123)
+  #set.seed(123)
   train_ind <- sample(seq_len(nrow(trainp)), size = smp_size)
   
   train1 <- trainp[train_ind, ]
@@ -50,36 +50,61 @@ calcModelo <- function(n)
                        merged_val2$Lmean_ProdClien+merged_val2$Lmean_ProdAgen+merged_val2$Lmean_CLienAgen)
   
   
-  summary(lm_todasInter4)$r.squared
+  lm_todasInter4
   
-  }
-
-
-
-
-n<-seq(1000000,20000000,1000000)
-r<-rep(0,length(n))
-
-for(i in 1:length(n)){
-  
-  r[i]<-calcModelo(n[i])
-  print(paste("calculating with ", n[i]/1000000, " million, error: ", r[i]))
 }
 
-# 
-# #STOCHASTIC GRADIENT BOOSTING
-# 
-# fitControl <- trainControl(## 10-fold CV
-#   method = "repeatedcv",
-#   number = 10,
-#   ## repeated ten times
-#   repeats = 10)
-# 
-# gbmFit1 <- train(Demanda_uni_equil ~ Lmean_agencia+Lmean_producto+
-#                    Lmean_cliente+Lmean_ProdAgenClien+
-#                    Lmean_ProdClien+Lmean_ProdAgen+Lmean_CLienAgen, data = merged_val2,
-#                  method = "gbm",
-#                  trControl = fitControl,
-#                  ## This last option is actually one
-#                  ## for gbm() that passes through
-#                  verbose = FALSE)
+reps<-1000
+n<-7500000
+betas<-matrix(0,reps,8)
+colnames(betas)<-c('intercept','agencia','producto','cliente','prodAgenCliente','prodCliente','prodAgencia','clienteAgen')
+
+r<-rep(0,reps)
+
+for(i in 1:reps){
+  
+  modelo<-resampling(n)
+  betas[i,]<-modelo$coefficients
+  r[i]<-summary(modelo)$r.squared
+  print(i)
+}
+
+#summary(betas[,2])
+
+promBetas<-apply(betas, 2, mean)
+
+write.csv(betas, 'betas.csv')
+write.csv(promBetas, 'promBetas.csv')
+
+
+#comparacion
+trainp<- train  %>% sample_n(5000000)
+
+smp_size <- floor(0.8 * nrow(trainp))
+
+## set the seed to make your partition reproductible
+#set.seed(123)
+train_ind <- sample(seq_len(nrow(trainp)), size = smp_size)
+
+train1 <- trainp[train_ind, ]
+test1 <- trainp[-train_ind, ]
+
+x<-matrix(1,nrow(merged_val2),8)
+x[,2]<-merged_val2$Lmean_agencia
+x[,3]<-merged_val2$Lmean_producto
+x[,4]<-merged_val2$Lmean_cliente
+x[,5]<-merged_val2$Lmean_ProdAgenClien
+x[,6]<-merged_val2$Lmean_ProdClien
+x[,7]<-merged_val2$Lmean_ProdAgen
+x[,8]<-merged_val2$Lmean_CLienAgen
+
+
+demandauniqcalc<-x%*%promBetas
+rmsle(merged_val2$Demanda_uni_equil[complete.cases(demandauniqcalc)],demandauniqcalc[complete.cases(demandauniqcalc)])
+
+cov(merged_val2$Demanda_uni_equil[complete.cases(demandauniqcalc)],demandauniqcalc[complete.cases(demandauniqcalc)])/
+ ( sd(merged_val2$Demanda_uni_equil[complete.cases(demandauniqcalc)])*sd(demandauniqcalc[complete.cases(demandauniqcalc)]))
+
+summary(lm(merged_val2$Demanda_uni_equil[complete.cases(demandauniqcalc)]~demandauniqcalc[complete.cases(demandauniqcalc)]))
+
+rmsle(merged_val2$Demanda_uni_equil[complete.cases(merged_val2$Lmean_producto)],merged_val2$Lmean_producto[complete.cases(merged_val2$Lmean_producto)])
